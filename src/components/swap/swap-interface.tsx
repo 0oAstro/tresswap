@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useState, useRef } from "react";
 import Image from "next/image";
 import {
@@ -23,8 +25,6 @@ import {
   ArrowLeft,
   Sparkles,
   Settings,
-  ChevronDown,
-  ChevronUp,
   Instagram,
   Twitter,
   Copy,
@@ -37,7 +37,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { generateCritiqueForHairTransformation } from "@/lib/ai";
 
 export default function SwapInterface() {
   // Image states
@@ -237,9 +236,6 @@ export default function SwapInterface() {
       setResultImage(imageUrl);
 
       // Use the new AI critique function with the swapped image URL
-      const aiCritique = await generateCritiqueForHairTransformation(imageUrl);
-      setAiResponse(aiCritique);
-
       setShowResults(true);
 
       toast.success("Transformation complete!", {

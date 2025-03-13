@@ -1,7 +1,7 @@
 "use client";
 
-import { FC, useEffect, useRef } from "react";
-import { HTMLMotionProps, motion, useAnimation, useInView } from "motion/react";
+import { FC, useRef } from "react";
+import { HTMLMotionProps, motion } from "motion/react";
 
 type AnimationType =
   | "fadeIn"
@@ -198,13 +198,9 @@ const TextAnimate: FC<Props> = ({
   ...props
 }: Props) => {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true });
 
   const letters = Array.from(text);
   const { container, child } = animationVariants[type];
-
-  const ctrls = useAnimation();
-
   if (type === "rollIn" || type === "whipIn") {
     return (
       <span className={className}>

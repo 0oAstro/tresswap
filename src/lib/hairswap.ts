@@ -1,5 +1,3 @@
-import { Client } from "@gradio/client";
-
 /**
  * Swap hair by sending a POST request to our API route.
  * @returns A promise that resolves to the result image URL

@@ -1,4 +1,3 @@
-import { Metadata } from "next";
 import SwapInterface from "@/components/swap/swap-interface";
 
 export default function SwapPage() {

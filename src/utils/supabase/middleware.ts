@@ -15,7 +15,7 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
@@ -41,18 +41,19 @@ export async function updateSession(request: NextRequest) {
 
   // These are paths that should be accessible to everyone
   const publicPaths = [
-    '/login', 
-    '/auth', 
-    '/error', 
-    '/', 
-    '/about',
+    "/login",
+    "/auth",
+    "/error",
+    "/",
+    "/about",
     // Add other public paths as needed
   ];
 
   // Check if the current path is a public path
-  const isPublicPath = publicPaths.some(path => 
-    request.nextUrl.pathname === path || 
-    request.nextUrl.pathname.startsWith(path + '/')
+  const isPublicPath = publicPaths.some(
+    (path) =>
+      request.nextUrl.pathname === path ||
+      request.nextUrl.pathname.startsWith(path + "/")
   );
 
   // No user and trying to access a protected route

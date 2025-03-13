@@ -1,6 +1,5 @@
 import { Client } from "@gradio/client";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
 // Mock mode disabled as requested
 const MOCK_ENABLED = false;
@@ -93,29 +92,6 @@ export async function POST(request: NextRequest) {
       console.log("Temporary swap result URL:", resultUrl);
 
       // Download the swapped image blob
-      const swappedImageResponse = await fetch(resultUrl);
-      const swappedImageBlob = await swappedImageResponse.blob();
-
-      // Upload the swapped image to Supabase Storage
-      // console.log("Uploading swapped image to Supabase Storage...");
-      // const SUPABASE_URL = process.env.SUPABASE_URL!;
-      // const SUPABASE_KEY = process.env.SUPABASE_KEY!;
-      // const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-      // const fileName = `hairswap_${Date.now()}.png`;
-      // const { data: uploadData, error: uploadError } = await supabase.storage
-      //   .from("hairswap")
-      //   .upload(fileName, swappedImageBlob, {
-      //     cacheControl: "3600",
-      //     upsert: false,
-      //   });
-      // if (uploadError) {
-      //   console.error("Error uploading to Supabase:", uploadError);
-      //   throw new Error("Error uploading swapped image to storage");
-      // }
-      // // Retrieve public URL of the uploaded image
-      // const { publicURL } = supabase.storage
-      //   .from("hairswap")
-      //   .getPublicUrl(fileName);
       console.log("Swapped image public URL:", resultUrl);
 
       return NextResponse.json({
@@ -132,22 +108,22 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error swapping hair:", error);
 
     // User-friendly error message
     let errorMessage = "Error processing hair swap request";
-    if (error.message) {
-      errorMessage = error.message;
+    if ((error as Error).message) {
+      errorMessage = (error as Error).message;
 
       // Clean up common error messages
-      if (error.message.includes("Unexpected token '<'")) {
+      if (errorMessage.includes("Unexpected token '<'")) {
         errorMessage =
           "The HairFastGAN service is currently unavailable. Please try again later.";
-      } else if (error.message.includes("ECONNRESET")) {
+      } else if (errorMessage.includes("ECONNRESET")) {
         errorMessage =
           "Connection to the AI service was reset. The service might be overloaded.";
-      } else if (error.message.includes("timeout")) {
+      } else if (errorMessage.includes("timeout")) {
         errorMessage = "The request timed out. The AI service might be busy.";
       }
     }
@@ -155,7 +131,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: errorMessage,
-        details: error.message || "Unknown error",
+        details: (error as Error).message || "Unknown error",
         success: false,
       },
       { status: 503 }

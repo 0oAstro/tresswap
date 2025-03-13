@@ -1,11 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
-import { useState } from "react";
 export default function HomePage() {
   return (
     <div className="bg-[rgb(19,19,19)] flex flex-col min-h-svh">
@@ -29,7 +25,7 @@ export default function HomePage() {
               treeswap
             </h1>
             <p className="text-lg md:text-xl text-gray-400 mt-2">
-              gotta try 'em all
+              gotta try &aptos;em all
             </p>
           </div>
         </div>
