@@ -1,7 +1,6 @@
 import { Client } from "@gradio/client";
 import { NextRequest, NextResponse } from "next/server";
 
-// Mock mode disabled as requested
 const MOCK_ENABLED = false;
 
 export async function POST(request: NextRequest) {

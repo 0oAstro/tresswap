@@ -25,17 +25,20 @@ A magical AI-powered hair transformation app built with Next.js, Tailwind CSS, S
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/yourusername/hairify.git
    cd hairify
    ```
 
 2. Install dependencies:
+
    ```bash
    pnpm install
    ```
 
 3. Configure environment variables:
+
    - Copy `.env.local.example` to `.env.local`
    - Fill in your Supabase and Google AI credentials
 
@@ -48,6 +51,7 @@ A magical AI-powered hair transformation app built with Next.js, Tailwind CSS, S
 4. Run the Supabase SQL setup script found in `src/lib/supabase.ts` to set up the necessary tables and security rules.
 
 5. Start the development server:
+
    ```bash
    pnpm dev
    ```
