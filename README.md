@@ -1,8 +1,8 @@
-# Hairify - Transform Your Look! ✨
+# tresswap - Transform Your Look! ✨
 
 A magical AI-powered hair transformation app built with Next.js, Tailwind CSS, Shadcn UI, and Supabase.
 
-![Hairify](https://example.com/hairify-preview.jpg)
+![tresswap](./public/android-chrome-192x192.png)
 
 ## ✨ Features
 
@@ -27,8 +27,8 @@ A magical AI-powered hair transformation app built with Next.js, Tailwind CSS, S
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/hairify.git
-   cd hairify
+   git clone https://github.com/0oAstro/tresswap.git
+   cd tresswap
    ```
 
 2. Install dependencies:

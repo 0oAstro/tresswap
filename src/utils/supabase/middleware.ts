@@ -45,7 +45,7 @@ export async function updateSession(request: NextRequest) {
     "/auth",
     "/error",
     "/",
-    "/about",
+    "/contact",
     // Add other public paths as needed
   ];
 

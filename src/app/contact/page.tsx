@@ -9,7 +9,7 @@ import {
 import { Mail, Twitter, Github, Linkedin } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "contact - hairify",
+  title: "contact - tresswap",
   description: "get in touch about acquisition prospects or collaborations",
 };
 

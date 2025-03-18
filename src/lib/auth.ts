@@ -63,7 +63,7 @@ export async function loginWithTwitter() {
     provider: "twitter",
     options: {
       redirectTo: `${
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+        process.env.NEXT_PUBLIC_SITE_URL || "http://tresswap.vercel.app"
       }/auth/callback`,
     },
   });
