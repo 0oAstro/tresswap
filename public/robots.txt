@@ -1,0 +1,12 @@
+# https://www.robotstxt.org/robotstxt.html
+
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://tresswap.vercel.app/sitemap.xml
+
+# Disallow specific paths
+Disallow: /api/
+Disallow: /admin/

@@ -158,7 +158,7 @@ export function LoginForm({
               id="email"
               name="email"
               type="email"
-              placeholder="swap@tresswap.com"
+              placeholder="astro@gmail.com"
               required
               className="focus:ring-2 focus:ring-opacity-50 focus:ring-cyan-500"
             />

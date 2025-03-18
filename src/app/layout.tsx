@@ -17,12 +17,73 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+// Enhanced metadata for better SEO
 export const metadata: Metadata = {
   title: "tresswap - swap em all",
   description:
-    "swap hairs like they're nothing",
+    "Swap hairstyles quickly and easily with our advanced AI tools. Transform your look instantly with tresswap.",
+  keywords: [
+    "hairstyle",
+    "AI hairstyle",
+    "virtual hairstyle",
+    "hair swap",
+    "tresswap",
+  ],
+  authors: [{ name: "0oAstro" }],
+  creator: "tresswap",
+  publisher: "tresswap",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL("https://tresswap.vercel.app"), // Replace with your actual domain
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "tresswap - swap em all",
+    description:
+      "Swap hairstyles quickly and easily with our advanced AI tools.",
+    url: "https://tresswap.vercel.app", // Replace with your actual domain
+    siteName: "tresswap",
+    images: [
+      {
+        url: "/tresswap-montrox.jpg",
+        width: 800,
+        height: 600,
+        alt: "tresswap logo",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "tresswap - swap em all",
+    description:
+      "Swap hairstyles quickly and easily with our advanced AI tools.",
+    creator: "@0oAstro", // Replace with your actual Twitter handle
+    images: ["/tresswap-montrox.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   icons: {
     icon: "/favicon.ico",
+    shortcut: "/favicon-16x16.png",
+    apple: "/apple-touch-icon.png",
+  },
+  verification: {
+    google: "oT0PVzs3H5_PT865MSGzom8Qxde3smsToRL247tAIv4",
   },
 };
 
