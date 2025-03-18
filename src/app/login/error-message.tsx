@@ -2,10 +2,11 @@
 
 import { LoginForm } from "@/components/login-form";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
-export function ErrorMessageComponent() {
+// Component that uses search params
+function ErrorMessageWithParams() {
   const searchParams = useSearchParams();
   const errorMessage = searchParams.get("error");
 
@@ -18,11 +19,12 @@ export function ErrorMessageComponent() {
     }
   }, [errorMessage]);
 
-  return (
-    <Suspense fallback={<div>Loading login form...</div>}>
-      <LoginForm initialError={errorMessage} />
-    </Suspense>
-  );
+  return <LoginForm initialError={errorMessage} />;
+}
+
+// Wrapper component that doesn't use search params
+export function ErrorMessageComponent() {
+  return <ErrorMessageWithParams />;
 }
 
 export default ErrorMessageComponent;
