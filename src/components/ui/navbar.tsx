@@ -43,24 +43,23 @@ export function Navbar() {
 
   // Prevent redirection to login if already logged in
   useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session && pathname === "/login") {
+        router.replace("/swap");
+      }
+
+      setIsLoggedIn(!!session);
+    };
+
     if (pathname === "/login") {
       checkAuthAndRedirect();
     }
-  }, [pathname]);
-
-  // Check authentication and redirect if needed
-  const checkAuthAndRedirect = async () => {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (session && pathname === "/login") {
-      router.replace("/swap");
-    }
-
-    setIsLoggedIn(!!session);
-  };
+  }, [pathname, router]);
 
   // Check authentication status
   useEffect(() => {
@@ -96,22 +95,23 @@ export function Navbar() {
   const handleLogout = async () => {
     setLoading(true);
     try {
-      await logout();
+      const result = await logout();
 
-      // Force a refresh of the auth state just in case
-      const supabase = createClient();
-      await supabase.auth.signOut();
+      if (result?.error) {
+        toast.error("Failed to sign out", {
+          description: result.error,
+        });
+        return;
+      }
 
-      // Clear any local storage or session data
-      localStorage.removeItem("supabase.auth.token");
+      if (result?.success) {
+        // Only update UI and show toast - logout() already updated auth state
+        setIsLoggedIn(false);
+        toast.success("Signed out successfully");
 
-      // After logout, redirect to home
-      router.push("/");
-
-      // Update isLoggedIn state manually
-      setIsLoggedIn(false);
-
-      toast.success("Signed out successfully");
+        // After successful logout from server, navigate to home
+        router.push("/");
+      }
     } catch (error) {
       console.error("Logout error:", error);
       toast.error("Failed to sign out", {

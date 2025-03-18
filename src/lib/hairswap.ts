@@ -3,31 +3,55 @@
  * @returns A promise that resolves to the result image URL
  */
 export async function swapHair(
-  faceImage: File,
-  shapeImage: File,
-  colorImage: File | null,
+  faceImage: File | Blob,
+  shapeImage: File | Blob | null,
+  colorImage: File | Blob | null,
   blendingMode: string = "Article",
   poissonIters: number = 0,
   poissonErosion: number = 15
 ): Promise<string> {
+  // Validate inputs
+  if (!faceImage) {
+    throw new Error("Face image is required");
+  }
+
+  // Require at least one of shape or color
+  if (!shapeImage && !colorImage) {
+    throw new Error("Either hairstyle or color reference is required");
+  }
+
   const formData = new FormData();
   formData.append("faceImage", faceImage);
-  formData.append("shapeImage", shapeImage);
-  if (colorImage) formData.append("colorImage", colorImage);
+
+  if (shapeImage) {
+    formData.append("shapeImage", shapeImage);
+  }
+
+  if (colorImage) {
+    formData.append("colorImage", colorImage);
+  }
+
   formData.append("blendingMode", blendingMode);
   formData.append("poissonIters", poissonIters.toString());
   formData.append("poissonErosion", poissonErosion.toString());
 
-  const response = await fetch("/api/hairswap", {
-    method: "POST",
-    body: formData,
-  });
+  try {
+    const response = await fetch("/api/hairswap", {
+      method: "POST",
+      body: formData,
+    });
 
-  const data = await response.json();
-  if (!response.ok || !data.success) {
-    throw new Error(data.error || "API request failed");
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to swap hair");
+    }
+
+    const data = await response.json();
+    return data.url;
+  } catch (error: unknown) {
+    console.error("Error in swapHair:", error);
+    throw error;
   }
-  return data.url;
 }
 
 /**

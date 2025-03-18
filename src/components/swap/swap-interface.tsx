@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -28,6 +28,7 @@ import {
   Instagram,
   Twitter,
   Copy,
+  Clipboard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { swapHair } from "@/lib/hairswap";
@@ -38,34 +39,44 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+// Enhanced image state with resize status and error tracking
+interface ImageState {
+  file: File | null;
+  preview: string | null;
+  resizedBlob?: Blob | null;
+  resizing: boolean;
+  error: string | null;
+}
+
 export default function SwapInterface() {
-  // Image states
-  const [sourceImage, setSourceImage] = useState<{
-    file: File | null;
-    preview: string | null;
-  }>({
+  // Enhanced image states
+  const [sourceImage, setSourceImage] = useState<ImageState>({
     file: null,
     preview: null,
+    resizing: false,
+    error: null,
   });
-  const [shapeImage, setShapeImage] = useState<{
-    file: File | null;
-    preview: string | null;
-  }>({
+  const [shapeImage, setShapeImage] = useState<ImageState>({
     file: null,
     preview: null,
+    resizing: false,
+    error: null,
   });
-  const [colorImage, setColorImage] = useState<{
-    file: File | null;
-    preview: string | null;
-  }>({
+  const [colorImage, setColorImage] = useState<ImageState>({
     file: null,
     preview: null,
+    resizing: false,
+    error: null,
   });
 
-  // Camera refs - fix the type to handle null
-  const sourceCameraRef = useRef<HTMLInputElement>(null);
-  const shapeCameraRef = useRef<HTMLInputElement>(null);
-  const colorCameraRef = useRef<HTMLInputElement>(null);
+  // Camera refs for actual video elements
+  const sourceCameraRef = useRef<HTMLVideoElement>(null);
+  const shapeCameraRef = useRef<HTMLVideoElement>(null);
+  const colorCameraRef = useRef<HTMLVideoElement>(null);
+
+  // Camera stream state
+  const [activeCamera, setActiveCamera] = useState<string | null>(null);
+  const mediaStream = useRef<MediaStream | null>(null);
 
   // Result states
   const [resultImage, setResultImage] = useState<string | null>(null);
@@ -77,53 +88,265 @@ export default function SwapInterface() {
   const [poissonIters, setPoissonIters] = useState(0);
   const [poissonErosion, setPoissonErosion] = useState(15);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (
-    e: React.DragEvent,
-    setImage: React.Dispatch<
-      React.SetStateAction<{ file: File | null; preview: string | null }>
-    >
-  ) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.match("image.*")) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            setImage({
-              file,
-              preview: e.target.result as string,
-            });
-          }
-        };
-        reader.readAsDataURL(file);
+  // Cleanup camera streams when component unmounts
+  useEffect(() => {
+    return () => {
+      if (mediaStream.current) {
+        mediaStream.current.getTracks().forEach((track) => track.stop());
       }
-    }
-  };
+    };
+  }, []);
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    setImage: React.Dispatch<
-      React.SetStateAction<{ file: File | null; preview: string | null }>
-    >
-  ) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+  const handleImageFileCallback = useCallback(
+    (
+      file: File,
+      setImage: React.Dispatch<React.SetStateAction<ImageState>>,
+      imageType: string = "image"
+    ) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
           setImage({
             file,
             preview: e.target.result as string,
+            resizing: true,
+            error: null,
+          });
+
+          // Start resizing process immediately after preview is shown
+          resizeImage(file, setImage, imageType).catch((error) => {
+            console.error("Resize process failed:", error);
           });
         }
       };
       reader.readAsDataURL(file);
+    },
+    []
+  );
+
+  // Setup clipboard paste event listener
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (e.clipboardData && e.clipboardData.items) {
+        for (let i = 0; i < e.clipboardData.items.length; i++) {
+          const item = e.clipboardData.items[i];
+          if (item.type.indexOf("image") !== -1) {
+            const file = item.getAsFile();
+            if (file) {
+              // Determine which uploader to use based on active element or focus
+              const activeId = document.activeElement?.id || "";
+              if (activeId.includes("shape")) {
+                handleImageFileCallback(file, setShapeImage, "hairstyle");
+              } else if (activeId.includes("color")) {
+                handleImageFileCallback(file, setColorImage, "color");
+              } else {
+                // Default to source image
+                handleImageFileCallback(file, setSourceImage, "face");
+              }
+              toast.success("Image pasted", {
+                description: "Image from clipboard has been added",
+              });
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [handleImageFileCallback, setSourceImage, setShapeImage, setColorImage]);
+
+  // Begin resizing process as soon as image is selected
+  const resizeImage = async (
+    file: File,
+    setImage: React.Dispatch<React.SetStateAction<ImageState>>,
+    imageType: string
+  ) => {
+    setImage((prev) => ({ ...prev, resizing: true, error: null }));
+
+    try {
+      // Create a FormData to send the file to the resizing API
+      const formData = new FormData();
+      formData.append("image", file);
+
+      // Call HairFastGAN API directly through our proxy
+      const response = await fetch("/api/resize", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to resize ${imageType} image: ${response.statusText}`
+        );
+      }
+
+      const resizedBlob = await response.blob();
+
+      setImage((prev) => ({
+        ...prev,
+        resizedBlob,
+        resizing: false,
+      }));
+
+      return true;
+    } catch (error) {
+      console.error(`Error resizing ${imageType} image:`, error);
+
+      setImage((prev) => ({
+        ...prev,
+        resizing: false,
+        error: `Failed to resize ${imageType}: ${(error as Error).message}`,
+      }));
+
+      toast.error(`${imageType} image resize failed`, {
+        description: (error as Error).message,
+      });
+
+      return false;
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (
+    e: React.DragEvent,
+    setImage: React.Dispatch<React.SetStateAction<ImageState>>,
+    imageType: string
+  ) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.match("image.*")) {
+        handleImageFile(file, setImage, imageType);
+      }
+    }
+  };
+
+  const handleImageFile = (
+    file: File,
+    setImage: React.Dispatch<React.SetStateAction<ImageState>>,
+    imageType: string = "image"
+  ) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setImage({
+          file,
+          preview: e.target.result as string,
+          resizing: true,
+          error: null,
+        });
+
+        // Start resizing process immediately after preview is shown
+        resizeImage(file, setImage, imageType).catch((error) => {
+          console.error("Resize process failed:", error);
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setImage: React.Dispatch<React.SetStateAction<ImageState>>,
+    imageType: string
+  ) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      handleImageFile(file, setImage, imageType);
+    }
+  };
+
+  // Start camera capture
+  const startCamera = async (cameraId: string) => {
+    try {
+      // Close any existing camera stream first
+      if (mediaStream.current) {
+        mediaStream.current.getTracks().forEach((track) => track.stop());
+      }
+
+      // Request camera access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false,
+      });
+
+      mediaStream.current = stream;
+      setActiveCamera(cameraId);
+
+      // Set stream to appropriate video element
+      const videoRef =
+        cameraId === "source"
+          ? sourceCameraRef
+          : cameraId === "shape"
+          ? shapeCameraRef
+          : colorCameraRef;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      toast.error("Camera access failed", {
+        description: "Could not access your camera. Please check permissions.",
+      });
+    }
+  };
+
+  // Capture photo from camera stream
+  const capturePhoto = (
+    cameraId: string,
+    setImage: React.Dispatch<React.SetStateAction<ImageState>>,
+    imageType: string
+  ) => {
+    const videoRef =
+      cameraId === "source"
+        ? sourceCameraRef
+        : cameraId === "shape"
+        ? shapeCameraRef
+        : colorCameraRef;
+
+    if (videoRef.current) {
+      // Create a canvas element to capture the frame
+      const canvas = document.createElement("canvas");
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        // Draw the current video frame to the canvas
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+
+        // Convert canvas to a file
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const file = new File([blob], `camera-${Date.now()}.jpg`, {
+                type: "image/jpeg",
+              });
+              handleImageFile(file, setImage, imageType);
+
+              // Close camera after taking photo
+              closeCamera();
+            }
+          },
+          "image/jpeg",
+          0.95
+        );
+      }
+    }
+  };
+
+  // Close camera stream
+  const closeCamera = () => {
+    if (mediaStream.current) {
+      mediaStream.current.getTracks().forEach((track) => track.stop());
+    }
+    setActiveCamera(null);
   };
 
   const shareOnTwitter = () => {
@@ -209,10 +432,36 @@ export default function SwapInterface() {
   };
 
   const handleSwapRequest = async () => {
-    if (!sourceImage.file || !shapeImage.file) {
+    // Make sure we have a face image and at least one of shape or color
+    if (!sourceImage.file || (!shapeImage.file && !colorImage.file)) {
       toast.error("Missing required images", {
         description:
-          "Please upload both a face photo and a hairstyle reference.",
+          "Please upload a face photo and either a hairstyle or color reference.",
+      });
+      return;
+    }
+
+    // Check if any required image is still resizing
+    if (
+      sourceImage.resizing ||
+      (shapeImage.file && shapeImage.resizing) ||
+      (colorImage.file && colorImage.resizing)
+    ) {
+      toast.error("Images still processing", {
+        description: "Please wait for all images to finish processing.",
+      });
+      return;
+    }
+
+    // Check for any resize errors in required images
+    if (
+      sourceImage.error ||
+      (shapeImage.file && shapeImage.error) ||
+      (colorImage.file && colorImage.error)
+    ) {
+      toast.error("Image processing errors", {
+        description:
+          "One or more images failed to process. Please try uploading them again.",
       });
       return;
     }
@@ -224,18 +473,20 @@ export default function SwapInterface() {
         duration: 5000,
       });
 
+      // Pass pre-resized images if available, otherwise original files
       const imageUrl = await swapHair(
-        sourceImage.file,
-        shapeImage.file,
-        colorImage.file,
+        sourceImage.resizedBlob || sourceImage.file,
+        shapeImage.resizedBlob || shapeImage.file,
+        colorImage.resizedBlob || colorImage.file,
         "Article",
         poissonIters,
         poissonErosion
       );
 
       setResultImage(imageUrl);
-
-      // Use the new AI critique function with the swapped image URL
+      setAiResponse(
+        "Your new hairstyle looks fantastic! The blend appears natural and suits your face shape well."
+      );
       setShowResults(true);
 
       toast.success("Transformation complete!", {
@@ -243,6 +494,7 @@ export default function SwapInterface() {
       });
     } catch (error: any) {
       console.error("Error:", error);
+
       // Extract error message
       let errorMessage = "Failed to transform hair. Please try again.";
       let details = "There was an error processing your request.";
@@ -259,6 +511,9 @@ export default function SwapInterface() {
           errorMessage = "Request timed out";
           details =
             "The AI service is taking too long to respond. It may be busy. Please try again later.";
+        } else if (error.message.includes("Failed to resize")) {
+          errorMessage = "Image processing failed";
+          details = error.message;
         } else {
           details = error.message;
         }
@@ -278,104 +533,164 @@ export default function SwapInterface() {
     description,
     image,
     setImage,
-    cameraRef,
+    cameraId,
     required = false,
   }: {
     title: string;
     description: string;
-    image: { file: File | null; preview: string | null };
-    setImage: React.Dispatch<
-      React.SetStateAction<{ file: File | null; preview: string | null }>
-    >;
-    cameraRef: React.RefObject<HTMLInputElement>;
+    image: ImageState;
+    setImage: React.Dispatch<React.SetStateAction<ImageState>>;
+    cameraId: string;
     required?: boolean;
-  }) => (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center text-lg">
-          {title} {required && <span className="text-red-500 ml-1">*</span>}
-        </CardTitle>
-        <CardDescription className="text-xs">{description}</CardDescription>
-      </CardHeader>
-      <CardContent
-        className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-muted-foreground/20 rounded-md cursor-pointer flex-grow"
-        onDrop={(e) => handleDrop(e, setImage)}
-        onDragOver={handleDragOver}
-        style={{ minHeight: "200px" }} // Ensure minimum height for consistency
-      >
-        {image.preview ? (
-          <div className="relative w-full aspect-square h-full">
-            <Image
-              src={image.preview}
-              alt={`${title} Preview`}
-              fill
-              className="object-cover rounded-md"
-            />
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center space-y-2 p-4 h-full">
-            <div className="rounded-full p-3 bg-muted">
-              <ImageIcon className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">
-                Drag & drop or upload
-              </p>
-            </div>
-          </div>
-        )}
+  }) => {
+    const videoRef =
+      cameraId === "source"
+        ? sourceCameraRef
+        : cameraId === "shape"
+        ? shapeCameraRef
+        : colorCameraRef;
+    const imageType =
+      cameraId === "source"
+        ? "face"
+        : cameraId === "shape"
+        ? "hairstyle"
+        : "color";
 
-        <input
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => handleFileChange(e, setImage)}
-          id={`${title.toLowerCase()}-upload`}
-        />
+    return (
+      <Card className="h-full flex flex-col">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center text-lg">
+            {title} {required && <span className="text-red-500 ml-1">*</span>}
+          </CardTitle>
+          <CardDescription className="text-xs">{description}</CardDescription>
+        </CardHeader>
+        <CardContent
+          className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-muted-foreground/20 rounded-md cursor-pointer flex-grow relative"
+          onDrop={(e) => handleDrop(e, setImage, imageType)}
+          onDragOver={handleDragOver}
+          style={{ minHeight: "200px" }}
+          id={`${cameraId}-uploader`}
+        >
+          {activeCamera === cameraId ? (
+            <div className="relative w-full h-full flex flex-col">
+              <video
+                ref={videoRef}
+                className="rounded-md object-cover w-full h-full"
+                autoPlay
+                playsInline
+              />
+              <div className="absolute bottom-2 inset-x-0 flex justify-center space-x-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => capturePhoto(cameraId, setImage, imageType)}
+                >
+                  Take Photo
+                </Button>
+                <Button variant="outline" size="sm" onClick={closeCamera}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : image.preview ? (
+            <div className="relative w-full aspect-square h-full">
+              <Image
+                src={image.preview}
+                alt={`${title} Preview`}
+                fill
+                className="object-cover rounded-md"
+              />
+              {image.resizing && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-md">
+                  <Loader2 className="h-8 w-8 animate-spin text-white" />
+                </div>
+              )}
+              {image.error && (
+                <div className="absolute inset-0 flex items-center justify-center bg-red-500/30 rounded-md">
+                  <p className="text-white text-sm bg-red-500 p-2 rounded">
+                    Error: {image.error}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center space-y-2 p-4 h-full">
+              <div className="rounded-full p-3 bg-muted">
+                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">
+                  Drag & drop, paste or upload
+                </p>
+              </div>
+            </div>
+          )}
 
-        <input
-          type="file"
-          accept="image/*"
-          capture="user"
-          className="hidden"
-          ref={cameraRef}
-          onChange={(e) => handleFileChange(e, setImage)}
-        />
-      </CardContent>
-      <CardFooter className="flex justify-center gap-2 pt-2 pb-3">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            document.getElementById(`${title.toLowerCase()}-upload`)?.click()
-          }
-          className="h-8 text-xs px-2"
-        >
-          <Upload className="h-3 w-3 mr-1" />
-          Upload
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => cameraRef.current?.click()}
-          className="h-8 text-xs px-2"
-        >
-          <Camera className="h-3 w-3 mr-1" />
-          Camera
-        </Button>
-        {image.preview && (
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleFileChange(e, setImage, imageType)}
+            id={`${cameraId}-upload`}
+          />
+        </CardContent>
+        <CardFooter className="flex justify-center gap-2 pt-2 pb-3">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setImage({ file: null, preview: null })}
+            onClick={() =>
+              document.getElementById(`${cameraId}-upload`)?.click()
+            }
             className="h-8 text-xs px-2"
           >
-            Remove
+            <Upload className="h-3 w-3 mr-1" />
+            Upload
           </Button>
-        )}
-      </CardFooter>
-    </Card>
-  );
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => startCamera(cameraId)}
+            className="h-8 text-xs px-2"
+          >
+            <Camera className="h-3 w-3 mr-1" />
+            Camera
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              toast.info("Paste from clipboard", {
+                description: "Press Ctrl+V or Cmd+V to paste an image",
+              });
+              // Focus the uploader to make it the active element for paste
+              document.getElementById(`${cameraId}-uploader`)?.focus();
+            }}
+            className="h-8 text-xs px-2"
+          >
+            <Clipboard className="h-3 w-3 mr-1" />
+            Paste
+          </Button>
+          {image.preview && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setImage({
+                  file: null,
+                  preview: null,
+                  resizing: false,
+                  error: null,
+                })
+              }
+              className="h-8 text-xs px-2"
+            >
+              Remove
+            </Button>
+          )}
+        </CardFooter>
+      </Card>
+    );
+  };
 
   if (showResults && resultImage) {
     return (
@@ -453,7 +768,7 @@ export default function SwapInterface() {
           description="Upload a clear front-facing photo"
           image={sourceImage}
           setImage={setSourceImage}
-          cameraRef={sourceCameraRef as React.RefObject<HTMLInputElement>}
+          cameraId="source"
           required={true}
         />
         <ImageUploader
@@ -461,7 +776,7 @@ export default function SwapInterface() {
           description="Upload a hairstyle reference"
           image={shapeImage}
           setImage={setShapeImage}
-          cameraRef={shapeCameraRef as React.RefObject<HTMLInputElement>}
+          cameraId="shape"
           required={true}
         />
         <ImageUploader
@@ -469,7 +784,7 @@ export default function SwapInterface() {
           description="Optional color reference"
           image={colorImage}
           setImage={setColorImage}
-          cameraRef={colorCameraRef as React.RefObject<HTMLInputElement>}
+          cameraId="color"
         />
       </div>
 

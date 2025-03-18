@@ -3,19 +3,50 @@ import { NextRequest, NextResponse } from "next/server";
 
 const MOCK_ENABLED = false;
 
+// Define proper types for Gradio API responses
+interface GradioImageResponse {
+  data: Array<{
+    url?: string;
+    value?: {
+      url: string;
+    };
+  }>;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const faceImage = formData.get("faceImage") as File;
-    const shapeImage = formData.get("shapeImage") as File;
+    const shapeImage = formData.get("shapeImage") as File | null;
     const colorImage = formData.get("colorImage") as File | null;
     const blendingMode = (formData.get("blendingMode") as string) || "Article";
     const poissonIters = parseInt(
-      (formData.get("poissonIters") as string) || "0"
+      (formData.get("poissonIters") as string) || "0",
+      10
     );
     const poissonErosion = parseInt(
-      (formData.get("poissonErosion") as string) || "15"
+      (formData.get("poissonErosion") as string) || "15",
+      10
     );
+
+    // Validate inputs
+    if (!faceImage) {
+      return NextResponse.json(
+        { error: "Face image is required", success: false },
+        { status: 400 }
+      );
+    }
+
+    // Require either shape or color image
+    if (!shapeImage && !colorImage) {
+      return NextResponse.json(
+        {
+          error: "Either a hairstyle or color reference is required",
+          success: false,
+        },
+        { status: 400 }
+      );
+    }
 
     // Use mock result for development/testing
     if (MOCK_ENABLED) {
@@ -32,65 +63,29 @@ export async function POST(request: NextRequest) {
 
     console.log("Connecting to HairFastGAN API...");
 
-    // Connect to the API without token (as shown in test.js)
+    // Connect to the API without token
     const client = await Client.connect("AIRI-Institute/HairFastGAN");
     console.log("Successfully connected to API");
 
-    console.log("Preparing API inputs...");
+    // Skip resizing since images are already pre-resized from the client-side
+    console.log("Using pre-resized images from client");
 
-    // Resize face image
-    console.log("Resizing face image...");
-    const faceResizeResult = await client.predict("/resize_inner", {
-      img: faceImage,
-      align: ["Face", "Shape", "Color"],
-    });
-    const faceResizedUrl = faceResizeResult.data[0].url;
-    const faceResizedResponse = await fetch(faceResizedUrl);
-    const faceResizedBlob = await faceResizedResponse.blob();
-
-    let shapeResizedBlob = null;
-    let colorResizedBlob = null;
-    if (shapeImage) {
-      console.log("Resizing shape image...");
-      const shapeResizeResult = await client.predict("/resize_inner", {
-        img: shapeImage,
-        align: ["Face", "Shape", "Color"],
-      });
-      const shapeResizedUrl = shapeResizeResult.data[0].url;
-      const shapeResizedResponse = await fetch(shapeResizedUrl);
-      shapeResizedBlob = await shapeResizedResponse.blob();
-      // Enforce interdependence: if shape exists, ignore color
-      colorResizedBlob = null;
-    } else if (colorImage) {
-      console.log("Resizing color image...");
-      const colorResizeResult = await client.predict("/resize_inner", {
-        img: colorImage,
-        align: ["Face", "Shape", "Color"],
-      });
-      const colorResizedUrl = colorResizeResult.data[0].url;
-      const colorResizedResponse = await fetch(colorResizedUrl);
-      colorResizedBlob = await colorResizedResponse.blob();
-    }
-
-    // Second step: Call the swap_hair endpoint with all our inputs
-    console.log("Calling swap_hair with resized images...");
-    const swapResult = await client.predict("/swap_hair", {
-      face: faceResizedBlob,
-      shape: shapeResizedBlob,
-      color: colorResizedBlob,
+    // Call the swap_hair endpoint directly with the provided images
+    console.log("Calling swap_hair with provided images...");
+    const swapResult = (await client.predict("/swap_hair", {
+      face: faceImage,
+      shape: shapeImage,
+      color: colorImage,
       blending: blendingMode,
       poisson_iters: poissonIters,
       poisson_erosion: poissonErosion,
-    });
+    })) as GradioImageResponse;
 
-    console.log("Swap result:", JSON.stringify(swapResult).substring(0, 200));
+    console.log("Swap result received");
 
-    // Extract the URL from the result using the same pattern as test.js
-    if (swapResult) {
+    // Extract the URL from the result
+    if (swapResult?.data?.[0]?.value?.url) {
       const resultUrl = swapResult.data[0].value.url;
-      console.log("Temporary swap result URL:", resultUrl);
-
-      // Download the swapped image blob
       console.log("Swapped image public URL:", resultUrl);
 
       return NextResponse.json({
@@ -98,10 +93,10 @@ export async function POST(request: NextRequest) {
         success: true,
       });
     } else {
-      console.error("Error processing hair swap request");
+      console.error("Invalid response format from hair swap API");
       return NextResponse.json(
         {
-          error: "Error processing hair swap request",
+          error: "Invalid response format from hair swap API",
           success: false,
         },
         { status: 500 }

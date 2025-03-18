@@ -139,24 +139,27 @@ export default function NotFound() {
 
   const [lineIndex, setLineIndex] = useState(0);
 
-  // Handle completion of each line animation
-  const handleLineComplete = () => {
-    if (lineIndex < selectedHaiku.lines.length - 1) {
-      setLineIndex(lineIndex + 1);
-    }
-  };
-
   // Auto-advance through the haiku lines
   useEffect(() => {
+    // Handle completion of each line animation
+    const handleLineComplete = () => {
+      if (lineIndex < selectedHaiku.lines.length - 1) {
+        setLineIndex(lineIndex + 1);
+      }
+    };
+
     const timer = setTimeout(() => {
       handleLineComplete();
     }, 1500); // Adjust timing as needed
 
     return () => clearTimeout(timer);
-  }, [lineIndex]);
+  }, [lineIndex, selectedHaiku.lines.length]);
 
   return (
-    <div suppressHydrationWarning className="bg-[rgb(19,19,19)] flex flex-col items-center justify-center min-h-svh p-6">
+    <div
+      suppressHydrationWarning
+      className="bg-[rgb(19,19,19)] flex flex-col items-center justify-center min-h-svh p-6"
+    >
       <div className="max-w-md w-full flex flex-col items-center text-center">
         {/* Pokemon sprites with overlapping circles */}
         <div className="mb-8 relative h-[140px] w-[220px]">

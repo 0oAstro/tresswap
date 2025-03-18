@@ -19,7 +19,7 @@ export default function ContactPage() {
       <div className="max-w-xl mx-auto">
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold tracking-tight mb-2">
-            let&aptos;s connect
+            let&apos;s connect
           </h1>
           <p className="text-muted-foreground">
             reach out to discuss acquisition prospects or collaborations

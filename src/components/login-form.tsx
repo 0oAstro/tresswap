@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useState, useEffect, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import Image from "next/image";
 
 export function LoginForm({
   className,
@@ -102,9 +103,11 @@ export function LoginForm({
           <div className="flex flex-col items-center gap-2">
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center gap-2">
-                <img
+                <Image
                   src="/tresswap-montrox.jpg"
                   alt="tresswap logo by montrox"
+                  width={80}
+                  height={80}
                   className="h-20 w-auto"
                 />
                 <h1 className="text-xl font-bold">tresswap</h1>

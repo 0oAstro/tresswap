@@ -6,10 +6,21 @@ module.exports = {
     },
   },
   images: {
-    domains: [
-      "raw.githubusercontent.com",
-      "images.unsplash.com",
-      "airi-institute-hairfastgan.hf.space",
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "raw.githubusercontent.com",
+        pathname: "/PokeAPI/sprites/master/sprites/pokemon/**",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "airi-institute-hairfastgan.hf.space",
+        pathname: "/file=/tmp/gradio/**",
+      },
     ],
   },
 };

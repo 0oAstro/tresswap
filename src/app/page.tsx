@@ -25,7 +25,7 @@ export default function HomePage() {
               treeswap
             </h1>
             <p className="text-lg md:text-xl text-gray-400 mt-2">
-              gotta try &aptos;em all
+              gotta try &apos;em all
             </p>
           </div>
         </div>

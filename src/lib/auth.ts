@@ -62,7 +62,9 @@ export async function loginWithTwitter() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "twitter",
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+      redirectTo: `${
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+      }/auth/callback`,
     },
   });
 
@@ -84,15 +86,20 @@ export async function loginWithTwitter() {
 
 export async function logout() {
   const supabase = await createClient();
-  
+
   const { error } = await supabase.auth.signOut();
-  
+
   if (error) {
     return {
       error: error.message || "Failed to sign out. Please try again.",
     };
   }
-  
+
   revalidatePath("/", "layout");
-  redirect("/");
+
+  // Return a success response instead of redirecting
+  // This allows the client to decide whether to redirect
+  return {
+    success: true,
+  };
 }
