@@ -2,7 +2,7 @@
 
 import { LoginForm } from "@/components/login-form";
 import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { toast } from "sonner";
 
 export function ErrorMessageComponent() {
@@ -18,7 +18,11 @@ export function ErrorMessageComponent() {
     }
   }, [errorMessage]);
 
-  return <LoginForm initialError={errorMessage} />;
+  return (
+    <Suspense fallback={<div>Loading login form...</div>}>
+      <LoginForm initialError={errorMessage} />
+    </Suspense>
+  );
 }
 
 export default ErrorMessageComponent;
