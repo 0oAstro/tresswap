@@ -22,7 +22,7 @@ export default function HomePage() {
           </div>
           <div className="text-center md:text-left">
             <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold text-white relative">
-              treeswap
+              tresswap
             </h1>
             <p className="text-lg md:text-xl text-gray-400 mt-2">
               gotta try &apos;em all
