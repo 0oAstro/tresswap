@@ -13,6 +13,8 @@ interface GradioImageResponse {
   }>;
 }
 
+const client = await Client.connect("AIRI-Institute/HairFastGAN");
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -64,7 +66,6 @@ export async function POST(request: NextRequest) {
     console.log("Connecting to HairFastGAN API...");
 
     // Connect to the API without token
-    const client = await Client.connect("AIRI-Institute/HairFastGAN");
     console.log("Successfully connected to API");
 
     // Skip resizing since images are already pre-resized from the client-side
