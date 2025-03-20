@@ -120,20 +120,28 @@ export default function HistoryPage() {
       });
     }
   };
-
-  const downloadImage = (url: string) => {
+  const downloadImage = async (url: string) => {
     if (!url) {
       toast.error("cannot download: image URL is missing ｡°(°.◜ᯅ◝°)°｡");
       return;
     }
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "tresswap-result.png";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `tresswap-${timestamp}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error("error downloading image:", error);
+      toast.error("failed to download image ｡°(°.◜ᯅ◝°)°｡");
+    }
+  };
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat("en-US", {

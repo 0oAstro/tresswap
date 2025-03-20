@@ -100,6 +100,9 @@ export default function SwapInterface() {
   // Userid state
   const [userId, setUserId] = useState<string | null>(null);
 
+  // Add a new state for the stored permanent URL
+  const [storedResultUrl, setStoredResultUrl] = useState<string | null>(null);
+
   // Get user id on mount
   useEffect(() => {
     const getUserId = async () => {
@@ -311,13 +314,17 @@ export default function SwapInterface() {
   };
 
   const shareOnTwitter = () => {
-    if (resultImage) {
+    if (storedResultUrl) {
       const text = "check out my transformed hairstyle! ✨ #tresswap";
-      const url = encodeURIComponent(resultImage);
+      const url = encodeURIComponent(storedResultUrl);
       const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
         text
       )}&url=${url}`;
       window.open(twitterUrl, "_blank");
+    } else if (resultImage) {
+      toast.error("please wait", {
+        description: "image is still being processed ｡°(°.◜ᯅ◝°)°｡",
+      });
     }
   };
 
@@ -330,31 +337,39 @@ export default function SwapInterface() {
   };
 
   const copyImageLink = async () => {
-    if (resultImage && userId) {
-      try {
-        const savedResultUrl = await saveImageToBucket(resultImage, "result");
-        navigator.clipboard.writeText(savedResultUrl).then(() => {
-          toast.success("link copied", {
-            description: "permanent link copied to clipboard (っ˘ω˘ς )",
-          });
+    if (storedResultUrl) {
+      navigator.clipboard.writeText(storedResultUrl).then(() => {
+        toast.success("link copied", {
+          description: "permanent link copied to clipboard (っ˘ω˘ς )",
         });
-      } catch (error) {
-        console.error("Error saving to bucket:", error);
-        toast.error("copy failed", {
-          description: "couldn't save permanent link ｡°(°.◜ᯅ◝°)°｡",
-        });
-      }
-    } else if (resultImage) {
-      // Temporary URLs can expire, notify user
-      toast.error("not signed in", {
-        description: "fuck you, how you got here ｡°(°.◜ᯅ◝°)°｡",
       });
-      return;
+    } else if (resultImage && userId) {
+      toast.error("please wait", {
+        description: "image is still being processed ｡°(°.◜ᯅ◝°)°｡",
+      });
+    } else {
+      toast.error("not signed in", {
+        description:
+          "you need to be signed in to share permanent links ｡°(°.◜ᯅ◝°)°｡",
+      });
     }
   };
 
   const shareResult = () => {
-    if (navigator.share && resultImage) {
+    if (navigator.share && storedResultUrl) {
+      navigator
+        .share({
+          title: "check out my new hairstyle from tresswap!",
+          text: "i transformed my hair using tresswap - what do you think? #tresswap ✨",
+          url: storedResultUrl,
+        })
+        .catch((error) => {
+          console.error("Error sharing:", error);
+          toast.error("can't share", {
+            description: "sharing not supported on this device ｡°(°.◜ᯅ◝°)°｡",
+          });
+        });
+    } else if (navigator.share && resultImage) {
       navigator
         .share({
           title: "check out my new hairstyle from tresswap!",
@@ -375,9 +390,10 @@ export default function SwapInterface() {
   };
 
   const downloadResult = async () => {
-    if (resultImage) {
+    const imageUrl = storedResultUrl || resultImage;
+    if (imageUrl) {
       try {
-        const response = await fetch(resultImage);
+        const response = await fetch(imageUrl);
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -501,6 +517,7 @@ export default function SwapInterface() {
     }
   };
 
+  // Modified handleSwapRequest to save to bucket once and store URL
   const handleSwapRequest = async () => {
     // Make sure we have a face image and at least one of shape or color
     if (!sourceImage.file || (!shapeImage.file && !colorImage.file)) {
@@ -561,19 +578,26 @@ export default function SwapInterface() {
       const analysis = await getHairstyleAnalysis(imageUrl);
       setAiResponse(analysis);
 
-      setShowResults(true);
-
-      // Save result image to bucket if user is logged in
-      console.log("User ID:", userId);
-      console.log("Result URL:", imageUrl);
+      // Save result image to bucket once if user is logged in
       if (userId) {
-        // Save result image to bucket - this is crucial as the API URL is temporary
-        const savedResultUrl = await saveImageToBucket(imageUrl, "result");
+        toast.info("saving your result", {
+          description: "creating a permanent link to your transformation...",
+        });
 
-        // Save only the result URL to history
+        // Upload the result to the bucket once
+        const savedResultUrl = await saveImageToBucket(imageUrl, "result");
+        setStoredResultUrl(savedResultUrl);
+
+        // Save to history with the permanent URL
         await saveToHistory(savedResultUrl);
+
+        toast.success("saved permanently ✨", {
+          description:
+            "your transformation has been saved to your account (⁠◍⁠•⁠ᴗ⁠•⁠◍⁠)⁠❤",
+        });
       }
 
+      setShowResults(true);
       toast.success("transformation complete! ✨", {
         description: "your new hairstyle is ready! (⁠◍⁠•⁠ᴗ⁠•⁠◍⁠)⁠❤",
       });
@@ -817,14 +841,14 @@ export default function SwapInterface() {
     );
   };
 
-  if (showResults && resultImage) {
+  if (showResults && (resultImage || storedResultUrl)) {
     return (
       <div className="flex flex-col items-center gap-4 p-4 max-w-sm mx-auto">
         <Card className="w-full">
           <div className="w-full relative">
             {/* Reduced image dimensions for a compact view */}
             <Image
-              src={resultImage}
+              src={storedResultUrl || resultImage || ""}
               alt="transformed hair result"
               width={300}
               height={225}
