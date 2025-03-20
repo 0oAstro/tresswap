@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   // If "redirectTo" is in param, use it as the redirect URL, otherwise default to /swap
-  const redirectTo = searchParams.get("redirectTo") ?? "/swap";
+  const redirectTo = searchParams.get("redirectTo") ?? "/";
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
@@ -28,7 +28,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
 
     // Exchange the code for a session
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(
+      code
+    );
 
     // If there's an error during the code exchange, redirect to login with error message
     if (exchangeError) {
@@ -42,9 +44,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Handle different environments
-    const forwardedHost = request.headers.get('x-forwarded-host'); // original origin before load balancer
-    const isLocalEnv = process.env.NODE_ENV === 'development';
-    
+    const forwardedHost = request.headers.get("x-forwarded-host"); // original origin before load balancer
+    const isLocalEnv = process.env.NODE_ENV === "development";
+
     if (isLocalEnv) {
       // Local environment - no load balancer
       return NextResponse.redirect(`${origin}${redirectTo}`);
@@ -57,6 +59,8 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error("Unexpected error in auth callback:", error);
-    return NextResponse.redirect(new URL("/login?error=Unexpected+authentication+error", origin));
+    return NextResponse.redirect(
+      new URL("/login?error=Unexpected+authentication+error", origin)
+    );
   }
-} 
+}

@@ -62,7 +62,7 @@ export default function HistoryPage() {
         setHistoryItems(data || []);
       } catch (error) {
         console.error("Error fetching history:", error);
-        toast.error("Failed to load history");
+        toast.error("failed to load history ｡°(°.◜ᯅ◝°)°｡");
       } finally {
         setLoading(false);
       }
@@ -83,26 +83,27 @@ export default function HistoryPage() {
       if (error) throw error;
 
       setHistoryItems(historyItems.filter((item) => item.id !== id));
-      toast.success("Transformation deleted");
+      toast.success("transformation deleted ✨");
     } catch (error) {
       console.error("Error deleting history item:", error);
-      toast.error("Failed to delete transformation");
+      toast.error("failed to delete transformation ｡°(°.◜ᯅ◝°)°｡");
     }
   };
 
   const shareResult = async (item: HistoryItem) => {
     try {
       await navigator.share({
-        title: "Check out my new hairstyle with tresswap!",
+        title: "check out my new hairstyle with tresswap! ✨",
         text:
-          item.ai_description || "I tried on a new hairstyle with tresswap!",
+          item.ai_description ||
+          "i tried on a new hairstyle with tresswap! (⁠◍⁠•⁠ᴗ⁠•⁠◍⁠)⁠❤",
         url: item.result_url,
       });
     } catch (error) {
       console.error("Error sharing:", error);
-      toast.error("Sharing not supported", {
+      toast.error("sharing not supported", {
         description:
-          "Your browser doesn't support sharing. Try downloading and sharing manually.",
+          "your browser doesn't support sharing. try downloading and sharing manually. ｡°(°.◜ᯅ◝°)°｡",
       });
     }
   };
@@ -132,13 +133,14 @@ export default function HistoryPage() {
       <div className="container py-10 mx-auto">
         <div className="max-w-md mx-auto text-center">
           <h1 className="text-3xl font-bold tracking-tight mb-2">
-            Your History
+            your history
           </h1>
           <p className="text-muted-foreground mb-8">
-            You need to be logged in to view your transformation history.
+            you need to be logged in to view your transformation history.
+            (⁠◍⁠•⁠ᴗ⁠•⁠◍⁠)⁠❤
           </p>
           <Button asChild>
-            <Link href="/login">Log In</Link>
+            <Link href="/login">log in</Link>
           </Button>
         </div>
       </div>
@@ -150,10 +152,11 @@ export default function HistoryPage() {
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold tracking-tight mb-2">
-            Your Transformation History
+            your transformation history ✨
           </h1>
           <p className="text-muted-foreground">
-            View and manage all your previous hairstyle transformations
+            view and manage all your previous hairstyle transformations (っ˘ω˘ς
+            )
           </p>
         </div>
 
@@ -179,12 +182,14 @@ export default function HistoryPage() {
           </div>
         ) : historyItems.length === 0 ? (
           <div className="text-center py-12">
-            <h2 className="text-xl font-medium mb-2">No transformations yet</h2>
+            <h2 className="text-xl font-medium mb-2">
+              no transformations yet ｡°(°.◜ᯅ◝°)°｡
+            </h2>
             <p className="text-muted-foreground mb-6">
-              Try your first hairstyle transformation to see it here
+              try your first hairstyle transformation to see it here
             </p>
             <Button asChild>
-              <Link href="/swap">Try a Style</Link>
+              <Link href="/swap">try a style ✨</Link>
             </Button>
           </div>
         ) : (
@@ -195,7 +200,7 @@ export default function HistoryPage() {
                   <CardTitle className="line-clamp-1">
                     {item.ai_description
                       ? item.ai_description
-                      : "Hair Transformation"}
+                      : "hair transformation ✨"}
                   </CardTitle>
                   <CardDescription>
                     {formatDate(item.created_at)}
@@ -205,7 +210,7 @@ export default function HistoryPage() {
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">
-                        Original
+                        original
                       </p>
                       <div className="relative h-32 w-full">
                         <Image
@@ -218,7 +223,7 @@ export default function HistoryPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">
-                        Result
+                        result
                       </p>
                       <div className="relative h-32 w-full">
                         <Image
@@ -228,7 +233,7 @@ export default function HistoryPage() {
                           className="object-cover rounded-md"
                         />
                         <div className="absolute bottom-1 right-1 bg-background/80 px-1 py-0.5 rounded text-[10px]">
-                          tresswap.ai
+                          tresswap.ai ✨
                         </div>
                       </div>
                     </div>
@@ -239,7 +244,7 @@ export default function HistoryPage() {
                       {item.shape_url && (
                         <div>
                           <p className="text-xs text-muted-foreground mb-1">
-                            Shape
+                            shape
                           </p>
                           <div className="relative h-20 w-full">
                             <Image
@@ -254,7 +259,7 @@ export default function HistoryPage() {
                       {item.color_url && (
                         <div>
                           <p className="text-xs text-muted-foreground mb-1">
-                            Color
+                            color
                           </p>
                           <div className="relative h-20 w-full">
                             <Image
@@ -277,7 +282,7 @@ export default function HistoryPage() {
                       onClick={() => shareResult(item)}
                     >
                       <Share2 className="h-4 w-4 mr-2" />
-                      Share
+                      share
                     </Button>
                     <Button
                       variant="outline"
@@ -285,7 +290,7 @@ export default function HistoryPage() {
                       onClick={() => downloadImage(item.result_url)}
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Save
+                      save
                     </Button>
                   </div>
                   <Button
@@ -307,7 +312,7 @@ export default function HistoryPage() {
             <Button asChild variant="outline">
               <Link href="/swap">
                 <ExternalLink className="h-4 w-4 mr-2" />
-                Try Another Style
+                try another style (⁠◍⁠•⁠ᴗ⁠•⁠◍⁠)⁠❤
               </Link>
             </Button>
           </div>

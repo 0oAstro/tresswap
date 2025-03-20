@@ -10,6 +10,21 @@ import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Image from "next/image";
 
+// Validation helper functions
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email);
+};
+
+const isValidPassword = (password: string): boolean => {
+  // At least 8 characters, must contain both letters and digits
+  const hasMinLength = password.length >= 8;
+  const hasLetters = /[a-zA-Z]/.test(password);
+  const hasDigits = /\d/.test(password);
+
+  return hasMinLength && hasLetters && hasDigits;
+};
+
 // Component specifically for handling search params
 function RedirectHandler({
   onRedirectFound,
@@ -41,6 +56,10 @@ export function LoginForm({
   );
   const [isPending, startTransition] = useTransition();
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
+  // New validation states
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Check if passwords match whenever either password field changes
   useEffect(() => {
@@ -63,7 +82,22 @@ export function LoginForm({
     setPasswordsMatch(true);
     setFormTouched(false);
     setErrorMessage(null);
+    setEmail("");
+    setEmailError(null);
+    setPasswordError(null);
   }, [isSignUp]);
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    setFormTouched(true);
+
+    if (value && !isValidEmail(value)) {
+      setEmailError("Please enter a valid email address");
+    } else {
+      setEmailError(null);
+    }
+  };
 
   const handleConfirmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setConfirmPassword(e.target.value);
@@ -71,9 +105,22 @@ export function LoginForm({
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
+    const value = e.target.value;
+    setPassword(value);
+    setFormTouched(true);
+
+    if (value && (isSignUp || value.length > 0)) {
+      if (!isValidPassword(value)) {
+        setPasswordError(
+          "Password must be at least 8 characters long and contain both letters and numbers"
+        );
+      } else {
+        setPasswordError(null);
+      }
+    }
+
     if (confirmPassword !== "") {
-      setFormTouched(true);
+      setPasswordsMatch(confirmPassword === value);
     }
   };
 
@@ -81,7 +128,30 @@ export function LoginForm({
     e.preventDefault();
     setErrorMessage(null);
 
+    // Client-side validation before submission
     const formData = new FormData(e.currentTarget);
+    const emailValue = formData.get("email") as string;
+    const passwordValue = formData.get("password") as string;
+
+    // Validate email
+    if (!isValidEmail(emailValue)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+
+    // Validate password
+    if (isSignUp && !isValidPassword(passwordValue)) {
+      setPasswordError(
+        "Password must be at least 8 characters long and contain both letters and numbers"
+      );
+      return;
+    }
+
+    // Validate password match for sign up
+    if (isSignUp && password !== confirmPassword) {
+      setPasswordsMatch(false);
+      return;
+    }
 
     startTransition(async () => {
       const result = await (isSignUp ? signup(formData) : login(formData));
@@ -159,8 +229,16 @@ export function LoginForm({
               type="email"
               placeholder="astro@gmail.com"
               required
-              className="focus:ring-2 focus:ring-opacity-50 focus:ring-cyan-500"
+              value={email}
+              onChange={handleEmailChange}
+              className={cn(
+                "focus:ring-2 focus:ring-opacity-50",
+                emailError
+                  ? "border-red-500 focus:ring-red-500"
+                  : "focus:ring-cyan-500"
+              )}
             />
+            {emailError && <p className="text-xs text-red-500">{emailError}</p>}
           </div>
           <div className="grid gap-3">
             <Label htmlFor="password">Password</Label>
@@ -173,11 +251,14 @@ export function LoginForm({
               required
               className={cn(
                 "focus:ring-2 focus:ring-opacity-50",
-                isSignUp && !passwordsMatch
+                (isSignUp && !passwordsMatch) || passwordError
                   ? "border-red-500 focus:ring-red-500"
                   : "focus:ring-cyan-500"
               )}
             />
+            {passwordError && (
+              <p className="text-xs text-red-500">{passwordError}</p>
+            )}
           </div>
           {isSignUp && (
             <div className="grid gap-3">
@@ -224,11 +305,19 @@ export function LoginForm({
             type="submit"
             className={cn(
               "w-full",
-              (isSignUp && !passwordsMatch) || isPending
+              (isSignUp && !passwordsMatch) ||
+                isPending ||
+                emailError ||
+                passwordError
                 ? "opacity-50 cursor-not-allowed"
                 : ""
             )}
-            disabled={(isSignUp && !passwordsMatch) || isPending}
+            disabled={
+              (isSignUp && !passwordsMatch) ||
+              isPending ||
+              !!emailError ||
+              !!passwordError
+            }
           >
             {isPending ? "Processing..." : isSignUp ? "sign up :)" : "login"}
           </Button>

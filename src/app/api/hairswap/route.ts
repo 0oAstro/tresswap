@@ -13,7 +13,16 @@ interface GradioImageResponse {
   }>;
 }
 
-const client = await Client.connect("AIRI-Institute/HairFastGAN");
+// Create client once instead of for each request
+let clientPromise: Promise<any> | null = null;
+
+// Get or create the HairFastGAN client
+const getClient = async () => {
+  if (!clientPromise) {
+    clientPromise = Client.connect("AIRI-Institute/HairFastGAN");
+  }
+  return clientPromise;
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,19 +31,15 @@ export async function POST(request: NextRequest) {
     const shapeImage = formData.get("shapeImage") as File | null;
     const colorImage = formData.get("colorImage") as File | null;
     const blendingMode = (formData.get("blendingMode") as string) || "Article";
-    const poissonIters = parseInt(
-      (formData.get("poissonIters") as string) || "0",
-      10
-    );
-    const poissonErosion = parseInt(
-      (formData.get("poissonErosion") as string) || "15",
-      10
-    );
+
+    // Default values for poisson parameters
+    const poissonIters = 0; // Simple default value
+    const poissonErosion = 15; // Default erosion value
 
     // Validate inputs
     if (!faceImage) {
       return NextResponse.json(
-        { error: "Face image is required", success: false },
+        { error: "face image is required", success: false },
         { status: 400 }
       );
     }
@@ -43,7 +48,7 @@ export async function POST(request: NextRequest) {
     if (!shapeImage && !colorImage) {
       return NextResponse.json(
         {
-          error: "Either a hairstyle or color reference is required",
+          error: "either a hairstyle or color reference is required",
           success: false,
         },
         { status: 400 }
@@ -52,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     // Use mock result for development/testing
     if (MOCK_ENABLED) {
-      console.log("Using mock result for hairswap");
+      console.log("using mock result for hairswap");
 
       // Add artificial delay to simulate processing
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -63,16 +68,17 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log("Connecting to HairFastGAN API...");
+    console.log("connecting to hairfastgan api...");
 
-    // Connect to the API without token
-    console.log("Successfully connected to API");
+    // Get the client (reuses existing connection)
+    const client = await getClient();
+    console.log("successfully connected to api");
 
     // Skip resizing since images are already pre-resized from the client-side
-    console.log("Using pre-resized images from client");
+    console.log("using pre-resized images from client");
 
     // Call the swap_hair endpoint directly with the provided images
-    console.log("Calling swap_hair with provided images...");
+    console.log("calling swap_hair with provided images...");
     const swapResult = (await client.predict("/swap_hair", {
       face: faceImage,
       shape: shapeImage,
@@ -82,51 +88,51 @@ export async function POST(request: NextRequest) {
       poisson_erosion: poissonErosion,
     })) as GradioImageResponse;
 
-    console.log("Swap result received");
+    console.log("swap result received");
 
     // Extract the URL from the result
     if (swapResult?.data?.[0]?.value?.url) {
       const resultUrl = swapResult.data[0].value.url;
-      console.log("Swapped image public URL:", resultUrl);
+      console.log("swapped image public url:", resultUrl);
 
       return NextResponse.json({
         url: resultUrl,
         success: true,
       });
     } else {
-      console.error("Invalid response format from hair swap API");
+      console.error("invalid response format from hair swap api");
       return NextResponse.json(
         {
-          error: "Invalid response format from hair swap API",
+          error: "invalid response format from hair swap api",
           success: false,
         },
         { status: 500 }
       );
     }
   } catch (error: unknown) {
-    console.error("Error swapping hair:", error);
+    console.error("error swapping hair:", error);
 
     // User-friendly error message
-    let errorMessage = "Error processing hair swap request";
+    let errorMessage = "error processing hair swap request";
     if ((error as Error).message) {
       errorMessage = (error as Error).message;
 
       // Clean up common error messages
       if (errorMessage.includes("Unexpected token '<'")) {
         errorMessage =
-          "The HairFastGAN service is currently unavailable. Please try again later.";
+          "the hairfastgan service is currently unavailable. please try again later.";
       } else if (errorMessage.includes("ECONNRESET")) {
         errorMessage =
-          "Connection to the AI service was reset. The service might be overloaded.";
+          "connection to the ai service was reset. the service might be overloaded.";
       } else if (errorMessage.includes("timeout")) {
-        errorMessage = "The request timed out. The AI service might be busy.";
+        errorMessage = "the request timed out. the ai service might be busy.";
       }
     }
 
     return NextResponse.json(
       {
         error: errorMessage,
-        details: (error as Error).message || "Unknown error",
+        details: (error as Error).message || "unknown error",
         success: false,
       },
       { status: 503 }
