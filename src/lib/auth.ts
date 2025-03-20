@@ -116,6 +116,7 @@ export async function loginWithTwitter() {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "twitter",
+    options: { redirectTo: getURL() },
   });
 
   if (error) {

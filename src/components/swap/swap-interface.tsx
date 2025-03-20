@@ -14,7 +14,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   ImageIcon,
   Upload,
@@ -130,6 +129,7 @@ export default function SwapInterface() {
           });
 
           // Queue resize operation instead of starting immediately
+          // @ts-expect-error I dont know why
           resizeQueue.push(() => resizeImage(file, setImage, imageType));
           if (!isProcessingQueue) {
             processQueue();
@@ -258,6 +258,7 @@ export default function SwapInterface() {
         });
 
         // Queue resize instead of immediate processing
+        // @ts-expect-error Dont ask me why it works
         resizeQueue.push(() => resizeImage(file, setImage, imageType));
         if (!isProcessingQueue) {
           processQueue();
@@ -328,20 +329,27 @@ export default function SwapInterface() {
     downloadResult();
   };
 
-  const copyImageLink = () => {
-    if (resultImage) {
-      navigator.clipboard
-        .writeText(resultImage)
-        .then(() => {
+  const copyImageLink = async () => {
+    if (resultImage && userId) {
+      try {
+        const savedResultUrl = await saveImageToBucket(resultImage, "result");
+        navigator.clipboard.writeText(savedResultUrl).then(() => {
           toast.success("link copied", {
-            description: "image link copied to clipboard (っ˘ω˘ς )",
-          });
-        })
-        .catch(() => {
-          toast.error("copy failed", {
-            description: "couldn't copy link to clipboard ｡°(°.◜ᯅ◝°)°｡",
+            description: "permanent link copied to clipboard (っ˘ω˘ς )",
           });
         });
+      } catch (error) {
+        console.error("Error saving to bucket:", error);
+        toast.error("copy failed", {
+          description: "couldn't save permanent link ｡°(°.◜ᯅ◝°)°｡",
+        });
+      }
+    } else if (resultImage) {
+      // Temporary URLs can expire, notify user
+      toast.error("not signed in", {
+        description: "fuck you, how you got here ｡°(°.◜ᯅ◝°)°｡",
+      });
+      return;
     }
   };
 
@@ -366,16 +374,29 @@ export default function SwapInterface() {
     }
   };
 
-  const downloadResult = () => {
+  const downloadResult = async () => {
     if (resultImage) {
-      const link = document.createElement("a");
-      link.href = resultImage;
-      link.download = "tresswap-result.jpg";
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => {
-        document.body.removeChild(link);
-      }, 100);
+      try {
+        const response = await fetch(resultImage);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = `tresswap-${new Date()
+          .toISOString()
+          .replace(/[:.]/g, "-")}.webp`;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl);
+        }, 100);
+      } catch (error) {
+        console.error(error);
+        toast.error("download failed", {
+          description: "couldn't download the image ｡°(°.◜ᯅ◝°)°｡",
+        });
+      }
     }
   };
 
@@ -429,11 +450,11 @@ export default function SwapInterface() {
 
       const supabase = createClient();
       const fileExt = "webp";
-      const fileName = `${prefix}_${Date.now()}.${fileExt}`;
-      const filePath = `hairswap/${userId}/${fileName}`;
+      const fileName = `${prefix}_${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
+      const filePath = `results/${userId}/${fileName}`;
 
-      const { data, error } = await supabase.storage
-        .from("images")
+      const { error } = await supabase.storage
+        .from("hairswap")
         .upload(filePath, blob, {
           contentType: "image/webp",
           upsert: true,
@@ -446,7 +467,7 @@ export default function SwapInterface() {
 
       // Get public URL
       const { data: publicUrlData } = supabase.storage
-        .from("images")
+        .from("hairswap")
         .getPublicUrl(filePath);
 
       return publicUrlData.publicUrl;
@@ -457,13 +478,7 @@ export default function SwapInterface() {
   };
 
   // Save transformation to history
-  const saveToHistory = async (
-    sourceUrl: string,
-    shapeUrl: string | null,
-    colorUrl: string | null,
-    resultUrl: string,
-    description: string | null
-  ) => {
+  const saveToHistory = async (resultUrl: string) => {
     try {
       // Skip if no user is logged in
       if (!userId) return;
@@ -473,11 +488,8 @@ export default function SwapInterface() {
       const { error } = await supabase.from("hair_history").insert([
         {
           user_id: userId,
-          source_url: sourceUrl,
-          shape_url: shapeUrl,
-          color_url: colorUrl,
           result_url: resultUrl,
-          ai_description: description,
+          // created_at is handled automatically by Supabase
         },
       ]);
 
@@ -551,33 +563,15 @@ export default function SwapInterface() {
 
       setShowResults(true);
 
-      // Save images to bucket if user is logged in
+      // Save result image to bucket if user is logged in
+      console.log("User ID:", userId);
+      console.log("Result URL:", imageUrl);
       if (userId) {
-        // Save original images to buckets
-        const savedSourceUrl = await saveImageToBucket(
-          sourceImage.preview as string,
-          "source"
-        );
-
-        const savedShapeUrl = shapeImage.preview
-          ? await saveImageToBucket(shapeImage.preview, "shape")
-          : null;
-
-        const savedColorUrl = colorImage.preview
-          ? await saveImageToBucket(colorImage.preview, "color")
-          : null;
-
-        // Save result image to bucket
+        // Save result image to bucket - this is crucial as the API URL is temporary
         const savedResultUrl = await saveImageToBucket(imageUrl, "result");
 
-        // Save transformation to history
-        await saveToHistory(
-          savedSourceUrl,
-          savedShapeUrl,
-          savedColorUrl,
-          savedResultUrl,
-          analysis
-        );
+        // Save only the result URL to history
+        await saveToHistory(savedResultUrl);
       }
 
       toast.success("transformation complete! ✨", {
@@ -839,7 +833,7 @@ export default function SwapInterface() {
             />
           </div>
           <CardContent className="pt-2">
-            <p className="text-sm text-center font-medium">ai analysis:</p>
+            <p className="text-sm text-center font-medium">our take on this</p>
             {analyzingHairstyle ? (
               <div className="flex justify-center items-center py-2">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -862,53 +856,51 @@ export default function SwapInterface() {
             </Button>
           </CardFooter>
         </Card>
-        <div className="grid grid-cols-5 gap-2 w-full">
+
+        {/* Improved share buttons layout */}
+        <div className="grid grid-cols-2 gap-4 w-full">
           <Button
             variant="outline"
-            size="sm"
             onClick={shareOnTwitter}
-            className="h-10 px-3"
+            className="flex items-center justify-center gap-2 h-12"
           >
             <Twitter className="h-4 w-4" />
-            <span className="ml-2 hidden sm:inline">twitter</span>
+            <span>twitter</span>
           </Button>
           <Button
             variant="outline"
-            size="sm"
             onClick={shareOnInstagram}
-            className="h-10 px-3"
+            className="flex items-center justify-center gap-2 h-12"
           >
             <Instagram className="h-4 w-4" />
-            <span className="ml-2 hidden sm:inline">insta</span>
+            <span>instagram</span>
           </Button>
           <Button
             variant="outline"
-            size="sm"
             onClick={shareResult}
-            className="h-10 px-3"
+            className="flex items-center justify-center gap-2 h-12"
           >
             <Share2 className="h-4 w-4" />
-            <span className="ml-2 hidden sm:inline">share</span>
+            <span>share</span>
           </Button>
           <Button
             variant="outline"
-            size="sm"
             onClick={copyImageLink}
-            className="h-10 px-3"
+            className="flex items-center justify-center gap-2 h-12"
           >
             <Copy className="h-4 w-4" />
-            <span className="ml-2 hidden sm:inline">copy</span>
+            <span>copy link</span>
           </Button>
           <Button
             variant="outline"
-            size="sm"
             onClick={downloadResult}
-            className="h-10 px-3"
+            className="flex items-center justify-center gap-2 h-12 col-span-2"
           >
             <Download className="h-4 w-4" />
-            <span className="ml-2 hidden sm:inline">save</span>
+            <span>save image</span>
           </Button>
         </div>
+
         <Button
           variant="default"
           size="lg"

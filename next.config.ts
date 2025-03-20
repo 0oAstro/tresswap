@@ -1,3 +1,5 @@
+import path from "path";
+
 /** @type {import('next').NextConfig} */
 module.exports = {
   experimental: {
@@ -20,6 +22,11 @@ module.exports = {
         protocol: "https",
         hostname: "airi-institute-hairfastgan.hf.space",
         pathname: "/file=/tmp/gradio/**",
+      },
+      {
+        protocol: "https",
+        hostname: "xiumaodndwdsieutovfh.supabase.co",
+        pathname: "/storage/v1/object/public/**",
       },
     ],
   },

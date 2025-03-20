@@ -11,10 +11,33 @@ interface GradioImageResponse {
   }>;
 }
 
+// Create client once instead of for each request
+let clientPromise: Promise<Client> | null = null;
+
+const MOCK_ENABLED = process.env.MOCK_ENABLED === "true";
+
+// Get or create the HairFastGAN client
+const getClient = async () => {
+  if (!clientPromise) {
+    clientPromise = Client.connect("AIRI-Institute/HairFastGAN");
+  }
+  return clientPromise;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const image = formData.get("image") as File;
+
+    if (MOCK_ENABLED) {
+      console.log("using mock result for hairswap");
+      return new NextResponse(image, {
+        headers: {
+          "Content-Type": image.type,
+          "Content-Length": image.size.toString(),
+        },
+      });
+    }
 
     if (!image) {
       return NextResponse.json(
@@ -25,8 +48,8 @@ export async function POST(request: NextRequest) {
 
     console.log("Connecting to HairFastGAN API for resizing...");
 
-    // Connect to the API without token
-    const client = await Client.connect("AIRI-Institute/HairFastGAN");
+    // Get the client (reuses existing connection)
+    const client = await getClient();
 
     // Call the resize_inner endpoint
     console.log("Resizing image...");

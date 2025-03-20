@@ -1,7 +1,7 @@
 import { Client } from "@gradio/client";
 import { NextRequest, NextResponse } from "next/server";
 
-const MOCK_ENABLED = false;
+const MOCK_ENABLED = process.env.MOCK_ENABLED === "true";
 
 // Define proper types for Gradio API responses
 interface GradioImageResponse {
@@ -14,7 +14,7 @@ interface GradioImageResponse {
 }
 
 // Create client once instead of for each request
-let clientPromise: Promise<any> | null = null;
+let clientPromise: Promise<Client> | null = null;
 
 // Get or create the HairFastGAN client
 const getClient = async () => {
@@ -58,9 +58,6 @@ export async function POST(request: NextRequest) {
     // Use mock result for development/testing
     if (MOCK_ENABLED) {
       console.log("using mock result for hairswap");
-
-      // Add artificial delay to simulate processing
-      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       return NextResponse.json({
         url: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=870&auto=format&fit=crop",

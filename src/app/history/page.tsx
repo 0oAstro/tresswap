@@ -59,7 +59,20 @@ export default function HistoryPage() {
 
         if (error) throw error;
 
-        setHistoryItems(data || []);
+        // Validate data to ensure required URLs exist
+        const validatedData = (data || []).map((item) => {
+          if (!item.result_url) {
+            toast.error(
+              `Found item with missing result image (ID: ${item.id.substring(
+                0,
+                6
+              )}...)`
+            );
+          }
+          return item;
+        });
+
+        setHistoryItems(validatedData);
       } catch (error) {
         console.error("Error fetching history:", error);
         toast.error("failed to load history ｡°(°.◜ᯅ◝°)°｡");
@@ -109,6 +122,10 @@ export default function HistoryPage() {
   };
 
   const downloadImage = (url: string) => {
+    if (!url) {
+      toast.error("cannot download: image URL is missing ｡°(°.◜ᯅ◝°)°｡");
+      return;
+    }
     const link = document.createElement("a");
     link.href = url;
     link.download = "tresswap-result.png";
@@ -207,34 +224,25 @@ export default function HistoryPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">
-                        original
-                      </p>
-                      <div className="relative h-32 w-full">
-                        <Image
-                          src={item.source_url}
-                          alt="Original"
-                          fill
-                          className="object-cover rounded-md"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">
-                        result
-                      </p>
-                      <div className="relative h-32 w-full">
+                  <div className="mb-4">
+                    <p className="text-xs text-muted-foreground mb-1">result</p>
+                    <div className="relative h-48 w-full">
+                      {item.result_url ? (
                         <Image
                           src={item.result_url}
                           alt="Result"
                           fill
                           className="object-cover rounded-md"
                         />
-                        <div className="absolute bottom-1 right-1 bg-background/80 px-1 py-0.5 rounded text-[10px]">
-                          tresswap.ai ✨
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-muted rounded-md">
+                          <p className="text-muted-foreground text-sm">
+                            Image not available
+                          </p>
                         </div>
+                      )}
+                      <div className="absolute bottom-1 right-1 bg-background/80 px-1 py-0.5 rounded text-[10px]">
+                        tresswap
                       </div>
                     </div>
                   </div>
@@ -280,6 +288,7 @@ export default function HistoryPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => shareResult(item)}
+                      disabled={!item.result_url}
                     >
                       <Share2 className="h-4 w-4 mr-2" />
                       share
@@ -287,7 +296,14 @@ export default function HistoryPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => downloadImage(item.result_url)}
+                      onClick={() =>
+                        item.result_url
+                          ? downloadImage(item.result_url)
+                          : toast.error(
+                              "cannot download: image URL is missing ｡°(°.◜ᯅ◝°)°｡"
+                            )
+                      }
+                      disabled={!item.result_url}
                     >
                       <Download className="h-4 w-4 mr-2" />
                       save

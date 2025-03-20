@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  GenerationConfig,
-  GoogleGenerativeAI,
-  SchemaType,
-} from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { GoogleAIFileManager } from "@google/generative-ai/server";
 import * as fs from "fs";
 import * as path from "path";
@@ -33,7 +29,7 @@ const model = genAI.getGenerativeModel({
     topK: 40,
     maxOutputTokens: 8192,
     responseMimeType: "application/json",
-    // @ts-ignore // TODO: Figure out how to fix this
+    // @ts-expect-error // TODO: Figure out how to fix this
     responseSchema: schema,
   },
 });
