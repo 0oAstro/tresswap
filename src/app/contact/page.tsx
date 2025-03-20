@@ -49,7 +49,7 @@ export default function ContactPage() {
               className="flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-muted"
             >
               <Twitter className="h-5 w-5 text-muted-foreground" />
-              <span>x.com/0oastro</span>
+              <span>x.com/0oAstro</span>
             </a>
 
             <a
@@ -59,7 +59,7 @@ export default function ContactPage() {
               className="flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-muted"
             >
               <Github className="h-5 w-5 text-muted-foreground" />
-              <span>github.com/0oastro</span>
+              <span>github.com/0oAstro</span>
             </a>
 
             <a
@@ -69,7 +69,7 @@ export default function ContactPage() {
               className="flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-muted"
             >
               <Linkedin className="h-5 w-5 text-muted-foreground" />
-              <span>linkedin.com/in/sps1010</span>
+              <span>linkedin.com/in/0oAstro</span>
             </a>
           </CardContent>
         </Card>

@@ -122,11 +122,10 @@ export function LoginForm({
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center gap-2">
                 <Image
-                  src="/tresswap-montrox.jpg"
+                  src="/android-chrome-192x192.png"
                   alt="tresswap logo by montrox"
                   width={80}
                   height={80}
-                  className="h-20 w-auto"
                 />
                 <h1 className="text-xl font-bold">tresswap</h1>
               </div>

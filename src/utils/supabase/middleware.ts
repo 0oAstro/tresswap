@@ -38,26 +38,18 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  // These are paths that require authentication
+  const protectedPaths = ["/swap", "/history"];
 
-  // These are paths that should be accessible to everyone
-  const publicPaths = [
-    "/login",
-    "/auth",
-    "/error",
-    "/",
-    "/contact",
-    // Add other public paths as needed
-  ];
-
-  // Check if the current path is a public path
-  const isPublicPath = publicPaths.some(
+  // Check if the current path is a protected path
+  const isProtectedPath = protectedPaths.some(
     (path) =>
       request.nextUrl.pathname === path ||
       request.nextUrl.pathname.startsWith(path + "/")
   );
 
   // No user and trying to access a protected route
-  if (!user && !isPublicPath) {
+  if (!user && isProtectedPath) {
     // Redirect to login with the intended destination
     const url = request.nextUrl.clone();
     url.pathname = "/login";
