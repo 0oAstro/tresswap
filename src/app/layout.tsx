@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Metadata } from "next";
 import { Navbar } from "@/components/ui/navbar";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -105,6 +107,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} bg-[#010104] text-foreground`}
       >
+        <SpeedInsights />
+        <Analytics />
         <Navbar />
         <main className="min-h-[calc(100vh-4rem)]">{children}</main>
         <Toaster position="bottom-right" />
