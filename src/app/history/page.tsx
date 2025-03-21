@@ -132,7 +132,7 @@ export default function HistoryPage() {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const link = document.createElement("a");
       link.href = window.URL.createObjectURL(blob);
-      link.download = `tresswap-${timestamp}.png`;
+      link.download = `tresswap-${timestamp}.webp`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -223,9 +223,7 @@ export default function HistoryPage() {
               <Card key={item.id}>
                 <CardHeader>
                   <CardTitle className="line-clamp-1">
-                    {item.ai_description
-                      ? item.ai_description
-                      : "hair transformation ✨"}
+                    hair transformation ✨
                   </CardTitle>
                   <CardDescription>
                     {formatDate(item.created_at)}
