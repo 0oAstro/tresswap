@@ -314,16 +314,14 @@ export default function SwapInterface() {
   };
 
   const shareOnTwitter = () => {
-    if (storedResultUrl) {
-      const text = "check out my transformed hairstyle! ✨ #tresswap";
-      const url = encodeURIComponent(storedResultUrl);
-      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-        text
-      )}&url=${url}`;
-      window.open(twitterUrl, "_blank");
-    } else if (resultImage) {
-      toast.error("please wait", {
-        description: "image is still being processed ｡°(°.◜ᯅ◝°)°｡",
+    if (storedResultUrl || resultImage) {
+      // Download and redirect approach
+      downloadResult().then(() => {
+        const text = "check out my transformed hairstyle! ✨ #tresswap";
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+          text
+        )}`;
+        window.open(twitterUrl, "_blank");
       });
     }
   };
@@ -331,9 +329,12 @@ export default function SwapInterface() {
   const shareOnInstagram = () => {
     toast.info("instagram sharing", {
       description:
-        "save the image and share on insta with #tresswap hashtag! (⁠◍⁠•⁠ᴗ⁠•⁠◍⁠)⁠❤",
+        "image saved for sharing on instagram with #tresswap hashtag! (⁠◍⁠•⁠ᴗ⁠•⁠◍⁠)⁠❤",
     });
-    downloadResult();
+    downloadResult().then(() => {
+      // For Instagram, just open the site after download
+      window.open("https://instagram.com", "_blank");
+    });
   };
 
   const copyImageLink = async () => {
@@ -452,7 +453,7 @@ export default function SwapInterface() {
     }
   };
 
-  // Save image to Supabase bucket
+  // Save image to Supabase bucket with privacy enhancement
   const saveImageToBucket = async (
     imageUrl: string,
     prefix: string
@@ -466,8 +467,15 @@ export default function SwapInterface() {
 
       const supabase = createClient();
       const fileExt = "webp";
-      const fileName = `${prefix}_${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `results/${userId}/${fileName}`;
+
+      // Generate a random ID for the file instead of using user UUID directly
+      const randomId = crypto.randomUUID().replace(/-/g, "").substring(0, 12);
+      const fileName = `${prefix}_${Date.now()}_${randomId}.${fileExt}`;
+
+      // Use a hashed subdirectory based on user ID instead of directly exposing UUID
+      // This still allows for organization by user but doesn't expose the UUID
+      const hashedUserId = await hashUserId(userId);
+      const filePath = `results/${hashedUserId}/${fileName}`;
 
       const { error } = await supabase.storage
         .from("hairswap")
@@ -490,6 +498,27 @@ export default function SwapInterface() {
     } catch (error) {
       console.error("Error saving to bucket:", error);
       return imageUrl;
+    }
+  };
+
+  // Helper function to create a hashed directory from user ID
+  const hashUserId = async (userId: string): Promise<string> => {
+    // Simple hashing function to create a consistent but non-reversible directory name
+    // In production, you might want to use a more sophisticated method
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+      const char = userId.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString(16).substring(0, 8);
+  };
+
+  // Set a cookie to track non-logged users who have used their free swap
+  const setFreeSwapUsedCookie = () => {
+    // Only set for non-logged users
+    if (!userId) {
+      document.cookie = "used_free_swap=true; path=/; max-age=31536000"; // 1 year
     }
   };
 
@@ -517,7 +546,7 @@ export default function SwapInterface() {
     }
   };
 
-  // Modified handleSwapRequest to save to bucket once and store URL
+  // Modified handleSwapRequest to set cookie for non-logged users
   const handleSwapRequest = async () => {
     // Make sure we have a face image and at least one of shape or color
     if (!sourceImage.file || (!shapeImage.file && !colorImage.file)) {
@@ -584,7 +613,7 @@ export default function SwapInterface() {
           description: "creating a permanent link to your transformation...",
         });
 
-        // Upload the result to the bucket once
+        // Upload the result to the bucket once with privacy enhancement
         const savedResultUrl = await saveImageToBucket(imageUrl, "result");
         setStoredResultUrl(savedResultUrl);
 
@@ -594,6 +623,13 @@ export default function SwapInterface() {
         toast.success("saved permanently ✨", {
           description:
             "your transformation has been saved to your account (⁠◍⁠•⁠ᴗ⁠•⁠◍⁠)⁠❤",
+        });
+      } else {
+        // For non-logged users, set cookie to indicate they've used their free swap
+        setFreeSwapUsedCookie();
+
+        toast.info("free preview", {
+          description: "sign in to save your result and create more! ✨",
         });
       }
 

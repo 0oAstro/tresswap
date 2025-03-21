@@ -18,105 +18,18 @@ const getURL = () => {
   return url;
 };
 
-// Validation functions for server-side checking
-const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  return emailRegex.test(email);
-};
-
-const isValidPassword = (password: string): boolean => {
-  // At least 8 characters, must contain both letters and digits
-  const hasMinLength = password.length >= 8;
-  const hasLetters = /[a-zA-Z]/.test(password);
-  const hasDigits = /\d/.test(password);
-
-  return hasMinLength && hasLetters && hasDigits;
-};
-
-// Sanitize input to prevent injection attacks
-const sanitizeInput = (input: string): string => {
-  // Basic sanitization - for production, consider using a dedicated library
-  return input.replace(/[^\w@.-]/gi, "");
-};
-
-export async function login(formData: FormData) {
+export async function loginWithTwitter(redirectPath?: string | null) {
   const supabase = await createClient();
 
-  // Get the redirectTo URL if provided
-  const redirectTo = (formData.get("redirectTo") as string) || "/";
+  // Build redirectTo URL that will return to the specified path after auth
+  const baseUrl = getURL();
+  const finalRedirectUrl = redirectPath
+    ? `${baseUrl}?redirectTo=${redirectPath}`
+    : baseUrl;
 
-  // Get and validate inputs
-  const email = sanitizeInput(formData.get("email") as string);
-  const password = formData.get("password") as string;
-
-  // Server-side validation
-  if (!email || !isValidEmail(email)) {
-    return {
-      error: "Please enter a valid email address",
-    };
-  }
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    // Return the error instead of redirecting
-    return {
-      error: error.message || "Failed to sign in. Please try again.",
-    };
-  }
-
-  revalidatePath("/", "layout");
-  redirect(redirectTo);
-}
-
-export async function signup(formData: FormData) {
-  const supabase = await createClient();
-
-  // Get the redirectTo URL if provided
-  const redirectTo = (formData.get("redirectTo") as string) || "/swap";
-
-  // Get and validate inputs
-  const email = sanitizeInput(formData.get("email") as string);
-  const password = formData.get("password") as string;
-
-  // Server-side validation
-  if (!email || !isValidEmail(email)) {
-    return {
-      error: "Please enter a valid email address",
-    };
-  }
-
-  if (!password || !isValidPassword(password)) {
-    return {
-      error:
-        "Password must be at least 8 characters long and contain both letters and numbers",
-    };
-  }
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
-  if (error) {
-    // Return the error instead of redirecting
-    return {
-      error: error.message || "Failed to sign up. Please try again.",
-    };
-  }
-
-  revalidatePath("/", "layout");
-  redirect(redirectTo);
-}
-
-export async function loginWithTwitter() {
-  const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "twitter",
-    options: { redirectTo: getURL() },
+    options: { redirectTo: finalRedirectUrl },
   });
 
   if (error) {
@@ -132,6 +45,36 @@ export async function loginWithTwitter() {
 
   return {
     error: "Failed to get authorization URL from Twitter.",
+  };
+}
+
+export async function loginWithGoogle(redirectPath?: string | null) {
+  const supabase = await createClient();
+
+  // Build redirectTo URL that will return to the specified path after auth
+  const baseUrl = getURL();
+  const finalRedirectUrl = redirectPath
+    ? `${baseUrl}?redirectTo=${redirectPath}`
+    : baseUrl;
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: finalRedirectUrl },
+  });
+
+  if (error) {
+    return {
+      error:
+        error.message || "Failed to sign in with Google. Please try again.",
+    };
+  }
+
+  if (data?.url) {
+    redirect(data.url);
+  }
+
+  return {
+    error: "Failed to get authorization URL from Google.",
   };
 }
 

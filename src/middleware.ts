@@ -1,39 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { updateSession, createClient } from "@/utils/supabase/middleware";
+import { type NextRequest } from "next/server";
+import { updateSession } from "@/utils/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
   // Update the session first
   const response = await updateSession(request);
-  
-  // Protected routes that require authentication
-  const protectedRoutes = ['/history', '/swap'];
-  const { pathname } = request.nextUrl;
-  
-  // Check if the current path is a protected route
-  if (protectedRoutes.some(route => pathname.startsWith(route))) {
-    try {
-      // Create a client to check authentication status
-      const supabase = createClient(request);
-      
-      // Get the user from the session
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // If there's no user, redirect to login
-      if (!user) {
-        const url = new URL('/login', request.url);
-        url.searchParams.set('redirectTo', pathname);
-        return NextResponse.redirect(url);
-      }
-    } catch (error) {
-      console.error('Auth error in middleware:', error);
-      // On error, redirect to login with error message
-      const url = new URL('/login', request.url);
-      url.searchParams.set('redirectTo', pathname);
-      url.searchParams.set('error', 'Authentication failed. Please log in again.');
-      return NextResponse.redirect(url);
-    }
-  }
-  
   return response;
 }
 

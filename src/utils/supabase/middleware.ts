@@ -29,17 +29,16 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
+  // These are paths that require authentication
+  const protectedPaths = ["/history"];
 
-  // IMPORTANT: DO NOT REMOVE auth.getUser()
+  // Paths that allow one free use for non-logged in users
+  const oneTimePaths = ["/swap"];
 
+  // Get the user from the session
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  // These are paths that require authentication
-  const protectedPaths = ["/swap", "/history"];
 
   // Check if the current path is a protected path
   const isProtectedPath = protectedPaths.some(
@@ -48,13 +47,38 @@ export async function updateSession(request: NextRequest) {
       request.nextUrl.pathname.startsWith(path + "/")
   );
 
-  // No user and trying to access a protected route
+  // Check if the current path is a one-time path
+  const isOneTimePath = oneTimePaths.some(
+    (path) =>
+      request.nextUrl.pathname === path ||
+      request.nextUrl.pathname.startsWith(path + "/")
+  );
+
+  // No user and trying to access a fully protected route
   if (!user && isProtectedPath) {
     // Redirect to login with the intended destination
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirectTo", request.nextUrl.pathname);
     return NextResponse.redirect(url);
+  }
+
+  // Handle one-time paths for non-logged users
+  if (!user && isOneTimePath) {
+    // Check if user already used their free swap
+    const hasUsedFreeSwap = request.cookies.has("used_free_swap");
+
+    if (hasUsedFreeSwap) {
+      // Redirect to login with the intended destination
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("redirectTo", request.nextUrl.pathname);
+      url.searchParams.set("message", "Sign in to continue using tresswap!");
+      return NextResponse.redirect(url);
+    }
+
+    // First time user can proceed with their free swap
+    return supabaseResponse;
   }
 
   return supabaseResponse;
